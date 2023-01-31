@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="p-6 font-mono">
+    <div class="relative flex flex-wrap items-baseline pb-6 before:bg-black before:absolute before:-top-6 before:bottom-0 before:-left-60 before:-right-6">
+      <h1 class="flex-none font-semibold mb-2 relative text-2xl text-white w-full">Guess the move</h1>
+    </div>
+
+    <div class="max-w-5xl flex my-6 flex-col sm:flex-row">
+      <div class="flex-none w-full sm:w-1/2 mb-10">
+        <img src="./board.gif" alt="" class="z-10 inset-0 w-full h-full object-cover rounded-lg" loading="lazy" />
+      </div>
+
+      <div class="flex-auto sm:px-6">
+        <p class="text-xl">Play the best move.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

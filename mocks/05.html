@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="p-6 font-mono">
+    <div class="relative flex flex-wrap items-baseline pb-6 before:bg-black before:absolute before:-top-6 before:bottom-0 before:-left-60 before:-right-6">
+      <h1 class="flex-none font-semibold mb-2 relative text-2xl text-white w-full">Results</h1>
+    </div>
+
+    <div class="my-6">
+      <ul>
+        <li>
+          <span class="inline-block w-6">3</span>
+          <span class="text-blue-500">Inaccuracies</span>
+        </li>
+        <li>
+          <span class="inline-block w-6">2</span>
+          <span>Mistakes</span>
+        </li>
+        <li>
+          <span class="inline-block w-6">1</span>
+          <span class="text-red-500">Blunder</span>
+        </li>
+        <li>
+          <span class="inline-block w-6">37</span>
+          <span>Average centipawn loss</span>
+        </li>
+      </ul>
+    </div>
+
+    <button class="block px-6 mb-6 h-12 uppercase font-semibold tracking-wider border-2 border-black bg-teal-400 text-black">
+      View your variations in Lichess
+    </button>
+
+    <button class="block px-6 h-12 uppercase font-semibold tracking-wider border border-slate-200 text-slate-900">
+      Export PGN with your variations
+    </button>
+  </div>
+</body>
+</html>
