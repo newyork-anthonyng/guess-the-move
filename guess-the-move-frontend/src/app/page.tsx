@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Home() {
   return (
     <div>
@@ -10,7 +12,11 @@ export default function Home() {
           Improve your chess by studying master chess games.
         </p>
 
-        <button className="px-6 h-12 uppercase font-semibold tracking-wider border-2 border-black border-b-4 border-r-4 bg-teal-400 text-black shadow-xl hover:shadow-sm hover:border-b-2 hover:border-r-2">Get started</button>
+        <Link
+          className="leading-10 inline-block px-6 h-12 uppercase font-semibold tracking-wider border-2 border-black border-b-4 border-r-4 bg-teal-400 text-black shadow-xl hover:shadow-sm hover:border-b-2 hover:border-r-2"
+          href="/import"
+        >Get started</Link>
+        
 
         <div className="my-6">
           <h2 className="text-2xl mb-4">1. Import a game</h2>
