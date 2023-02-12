@@ -1,11 +1,14 @@
 'use client';
 
 import { makeUci } from 'chessops';
+import { makeFen } from 'chessops/fen';
+import { scalachessCharPair } from 'chessops/compat';
 import { uciToMove } from 'chessground/util';
 import { useEffect, useRef, useState } from 'react';
 import { Chessground } from 'chessground';
 import { Api } from 'chessground/api';
-import { parsePgn, PgnNodeData, startingPosition, transform } from 'chessops/pgn';
+import { Config } from 'chessground/config';
+import { parsePgn, startingPosition, transform } from 'chessops/pgn';
 import { parseSan, makeSanAndPlay } from 'chessops/san';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
@@ -32,13 +35,17 @@ is hanging, the bishop is blocked because of the
 Queen.--Fischer} b5 10.Nxb5 cxb5 11.Bxb5+ Nbd7 12.O-O-O Rd8
 13.Rxd7 Rxd7 14.Rd1 Qe6 15.Bxd7+ Nxd7 16.Qb8+ Nxb8 17.Rd8# 1-0`;
 
-interface ExtendedPgnNodeData extends PgnNodeData {
-  uci: string
-} 
-
-function generateUciFromPgn(pgn: string): ExtendedPgnNodeData[]  {
+function getMovesFromPgn(pgn: string): Config[]  {
     const game = parsePgn(pgn)[0];
     const pos = startingPosition(game.headers).unwrap();
+
+    const initialFen = makeFen(pos.toSetup());
+    const initialPosition = {
+      fen: initialFen,
+      turnColor: 'white',
+      lastMove: [],
+      san: ''
+    };
 
     game.moves = transform(game.moves, pos, (pos, node) => {
       const move = parseSan(pos, node.san);
@@ -47,21 +54,31 @@ function generateUciFromPgn(pgn: string): ExtendedPgnNodeData[]  {
         return;
       }
 
+      const moveId = scalachessCharPair(move);
       const san = makeSanAndPlay(pos, move);
+      const fen = makeFen(pos.toSetup());
+      const turnColor = pos.turn;
+      const uci = makeUci(move);
+      const lastMove = uciToMove(uci);
 
       return {
         ...node,
+        fen,
+        turnColor,
+        moveId,
         san,
-        uci: makeUci(move)
+        uci: makeUci(move),
+        lastMove
       };
     });
 
     const movesArray = Array.from(game.moves.mainline());
+    movesArray.unshift(initialPosition);
 
-    return movesArray as ExtendedPgnNodeData[];
+    return movesArray as Config[];
 }
 
-const moves = generateUciFromPgn(SAMPLE_PGN);
+const moves = getMovesFromPgn(SAMPLE_PGN);
 
 export default function Guess() {
   const chessboardDivRef = useRef<HTMLDivElement>(null);
@@ -78,17 +95,25 @@ export default function Guess() {
 
   function handleNextButtonClick() {
     if (chessgroundRef.current) {
-      const currentMove = moves[currentMoveIndex];
+      const nextMoveIndex = currentMoveIndex + 1;
+      setCurrentMoveIndex(nextMoveIndex);
+      const currentMove = moves[nextMoveIndex];
+
       if (!currentMove) return;
 
-      const myUciMove = uciToMove(currentMove.uci);
-      if (myUciMove) {
-        const [originCoordinate, destinationCoordinate] = myUciMove;
+      chessgroundRef.current.set(currentMove);
+    }
+  }
 
-        chessgroundRef.current.move(originCoordinate, destinationCoordinate);
+  function handlePreviousButtonClick() {
+    if (chessgroundRef.current) {
+      const previousMoveIndex = Math.max(0, currentMoveIndex - 1);
+      setCurrentMoveIndex(Math.max(0, currentMoveIndex - 1));
+      const currentMove = moves[previousMoveIndex];
 
-        setCurrentMoveIndex(currentMoveIndex + 1);
-      }
+      if (!currentMove) return;
+
+      chessgroundRef.current.set(currentMove);
     }
   }
 
@@ -111,6 +136,7 @@ export default function Guess() {
 
       <div className="flex-auto sm:px-6">
         <p className="text-xl">Play the best move.</p>
+        <button onClick={handlePreviousButtonClick}>Previous</button>
         <button onClick={handleNextButtonClick}>Next</button>
       </div>
     </div>
