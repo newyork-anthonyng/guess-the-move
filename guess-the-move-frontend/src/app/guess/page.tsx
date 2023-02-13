@@ -8,11 +8,24 @@ import { useEffect, useRef, useState } from 'react';
 import { Chessground } from 'chessground';
 import { Api } from 'chessground/api';
 import { Config } from 'chessground/config';
-import { parsePgn, startingPosition, transform } from 'chessops/pgn';
+import { parsePgn, makePgn, startingPosition, transform } from 'chessops/pgn';
 import { parseSan, makeSanAndPlay } from 'chessops/san';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
+
+function getEvaluation(playerFen: string, masterFen: string): Promise<object> {
+  console.group('%cgetEvaluation', 'background-color: coral;');
+  console.log('playerFen:', playerFen);
+  console.log('masterFen:', masterFen);
+  console.groupEnd();
+
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve({ ok: true });
+    }, 1500);
+  });
+}
 
 const SAMPLE_PGN = `[Event "Paris"]
 [Site "Paris FRA"]
@@ -63,6 +76,7 @@ function getMovesFromPgn(pgn: string): Config[]  {
 
       return {
         ...node,
+        comments: node.comments || ['This is a test'],
         fen,
         turnColor,
         moveId,
@@ -74,6 +88,15 @@ function getMovesFromPgn(pgn: string): Config[]  {
 
     const movesArray = Array.from(game.moves.mainline());
     movesArray.unshift(initialPosition);
+
+    const newPgn = makePgn(game);
+    // console.group('newPgn');
+    // console.log(newPgn);
+    // console.log(movesArray);
+    // console.groupEnd();
+    console.group('game.moves');
+    console.log(game);
+    console.groupEnd();
 
     return movesArray as Config[];
 }
@@ -89,7 +112,22 @@ export default function Guess() {
     const $div = chessboardDivRef.current;
 
     if ($div) {
-      chessgroundRef.current = Chessground($div, {});
+      chessgroundRef.current = Chessground($div, {
+        events: {
+          move: () => {
+            // get the fen from user's move
+            // TODO: how to restrict user to valid chess moves? Currently, user can move any piece to any square
+            const playerFen = chessgroundRef.current && chessgroundRef.current.getFen() || '';
+            const masterGameState = moves[currentMoveIndex + 1];
+            const masterFen = masterGameState.fen || '';
+
+            getEvaluation(playerFen, masterFen).then(response => {
+              console.log(response);
+            })
+          }
+        }
+        
+      });
     }
   }, []);
 
