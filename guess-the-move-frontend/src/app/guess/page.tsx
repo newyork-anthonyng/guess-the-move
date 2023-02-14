@@ -1,5 +1,6 @@
 'use client';
 
+import Chess from 'chess.js';
 import { makeUci } from 'chessops';
 import { makeFen } from 'chessops/fen';
 import { scalachessCharPair } from 'chessops/compat';
@@ -13,6 +14,26 @@ import { parseSan, makeSanAndPlay } from 'chessops/san';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
+
+const INITIAL_FEN = `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`;
+
+function toDests(chess) {
+  // const destinations = {};
+  const destinations = new Map();
+  
+  chess.SQUARES.forEach(s => {
+    const ms = chess.moves({ square: s, verbose: true });
+    if (ms.length) destinations.set(s, ms.map((m) => m.to));
+  });
+
+  const color = chess.turn() === 'w' ? 'white' : 'black';
+
+  return {
+    color,
+    dests: destinations,
+    free: false
+  }
+}
 
 function getEvaluation(playerFen: string, masterFen: string): Promise<object> {
   console.group('%cgetEvaluation', 'background-color: coral;');
@@ -110,9 +131,18 @@ export default function Guess() {
 
   useEffect(() => {
     const $div = chessboardDivRef.current;
+    const chess = new Chess(INITIAL_FEN);
+    // console.log(chess);
 
     if ($div) {
+      const result = toDests(chess);
+      console.log(result);
       chessgroundRef.current = Chessground($div, {
+        movable: {
+          free: false,
+          dests: result.dests,
+          showDests: true
+        },
         events: {
           move: () => {
             // get the fen from user's move
@@ -137,8 +167,11 @@ export default function Guess() {
       setCurrentMoveIndex(nextMoveIndex);
       const currentMove = moves[nextMoveIndex];
 
+
       if (!currentMove) return;
 
+      // console.log(currentMove);
+      // currentMove.movable = toDests(new Chess(INITIAL_FEN));
       chessgroundRef.current.set(currentMove);
     }
   }
@@ -150,6 +183,7 @@ export default function Guess() {
       const currentMove = moves[previousMoveIndex];
 
       if (!currentMove) return;
+
 
       chessgroundRef.current.set(currentMove);
     }
