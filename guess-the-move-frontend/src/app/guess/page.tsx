@@ -1,6 +1,6 @@
 'use client';
 
-import Chess from 'chess.js';
+import { Chess } from 'chess.js';
 import { makeUci } from 'chessops';
 import { makeFen } from 'chessops/fen';
 import { scalachessCharPair } from 'chessops/compat';
@@ -14,14 +14,16 @@ import { parseSan, makeSanAndPlay } from 'chessops/san';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
+import { initialSquares } from './utils';
 
 const INITIAL_FEN = `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`;
+
 
 function toDests(chess) {
   // const destinations = {};
   const destinations = new Map();
   
-  chess.SQUARES.forEach(s => {
+  initialSquares.forEach(s => {
     const ms = chess.moves({ square: s, verbose: true });
     if (ms.length) destinations.set(s, ms.map((m) => m.to));
   });
@@ -36,11 +38,6 @@ function toDests(chess) {
 }
 
 function getEvaluation(playerFen: string, masterFen: string): Promise<object> {
-  console.group('%cgetEvaluation', 'background-color: coral;');
-  console.log('playerFen:', playerFen);
-  console.log('masterFen:', masterFen);
-  console.groupEnd();
-
   return new Promise(resolve => {
     setTimeout(() => {
       resolve({ ok: true });
@@ -145,8 +142,6 @@ export default function Guess() {
         },
         events: {
           move: () => {
-            // get the fen from user's move
-            // TODO: how to restrict user to valid chess moves? Currently, user can move any piece to any square
             const playerFen = chessgroundRef.current && chessgroundRef.current.getFen() || '';
             const masterGameState = moves[currentMoveIndex + 1];
             const masterFen = masterGameState.fen || '';
@@ -167,12 +162,18 @@ export default function Guess() {
       setCurrentMoveIndex(nextMoveIndex);
       const currentMove = moves[nextMoveIndex];
 
-
       if (!currentMove) return;
 
-      // console.log(currentMove);
-      // currentMove.movable = toDests(new Chess(INITIAL_FEN));
-      chessgroundRef.current.set(currentMove);
+      const result = toDests(new Chess(currentMove.fen));
+      const newConfig = {
+        ...currentMove,
+        movable: {
+          free: false,
+          dests: result.dests,
+          showDests: true
+        }
+      };
+      chessgroundRef.current.set(newConfig);
     }
   }
 

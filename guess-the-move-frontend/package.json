@@ -14,7 +14,7 @@
     "@types/react": "18.0.27",
     "@types/react-dom": "18.0.10",
     "@xstate/react": "^3.1.2",
-    "chess.js": "0.12.0",
+    "chess.js": "^1.0.0-beta.3",
     "chessground": "^8.3.7",
     "chessops": "^0.12.6",
     "eslint": "8.33.0",
