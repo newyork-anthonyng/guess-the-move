@@ -1,5 +1,7 @@
 'use client';
 
+import { useMachine } from '@xstate/react';
+import evaluateMachine from './machine';
 import { Chess } from 'chess.js';
 import { makeUci } from 'chessops';
 import { makeFen } from 'chessops/fen';
@@ -17,7 +19,6 @@ import 'chessground/assets/chessground.cburnett.css';
 import { initialSquares } from './utils';
 
 const INITIAL_FEN = `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`;
-
 
 function toDests(chess) {
   // const destinations = {};
@@ -37,13 +38,6 @@ function toDests(chess) {
   }
 }
 
-function getEvaluation(playerFen: string, masterFen: string): Promise<object> {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({ ok: true });
-    }, 1500);
-  });
-}
 
 const SAMPLE_PGN = `[Event "Paris"]
 [Site "Paris FRA"]
@@ -108,13 +102,9 @@ function getMovesFromPgn(pgn: string): Config[]  {
     movesArray.unshift(initialPosition);
 
     const newPgn = makePgn(game);
-    // console.group('newPgn');
-    // console.log(newPgn);
-    // console.log(movesArray);
+    // console.group('game.moves');
+    // console.log(game);
     // console.groupEnd();
-    console.group('game.moves');
-    console.log(game);
-    console.groupEnd();
 
     return movesArray as Config[];
 }
@@ -122,9 +112,27 @@ function getMovesFromPgn(pgn: string): Config[]  {
 const moves = getMovesFromPgn(SAMPLE_PGN);
 
 export default function Guess() {
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const chessboardDivRef = useRef<HTMLDivElement>(null);
   const chessgroundRef = useRef<Api>();
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
+  const [state, send] = useMachine(evaluateMachine, {
+    actions: {
+      // load: () => {
+      //   const playerFen = chessgroundRef.current && chessgroundRef.current.getFen() || '';
+      //   const masterGameState = moves[currentMoveIndex + 1];
+      //   const masterFen = masterGameState.fen || '';
+      //   getEvaluation(playerFen, masterFen).then(response => {
+      //     if (response.ok) {
+      //       send({ type: 'RESOLVE' });
+      //     } else {
+      //       send({ type: 'ERROR' });
+      //     }
+      //   });
+      // }
+    }
+  });
+  
+  
 
   useEffect(() => {
     const $div = chessboardDivRef.current;
@@ -133,7 +141,7 @@ export default function Guess() {
 
     if ($div) {
       const result = toDests(chess);
-      console.log(result);
+      // console.log(result);
       chessgroundRef.current = Chessground($div, {
         movable: {
           free: false,
@@ -145,10 +153,7 @@ export default function Guess() {
             const playerFen = chessgroundRef.current && chessgroundRef.current.getFen() || '';
             const masterGameState = moves[currentMoveIndex + 1];
             const masterFen = masterGameState.fen || '';
-
-            getEvaluation(playerFen, masterFen).then(response => {
-              console.log(response);
-            })
+            send("MOVE", { masterFen, userFen: playerFen });
           }
         }
         
@@ -190,6 +195,10 @@ export default function Guess() {
     }
   }
 
+  function handleBackToGameClick() {
+    send('BACK');
+  }
+
   return (
     <div className="p-6 font-mono">
     <div className="relative flex flex-wrap items-baseline pb-6 before:bg-black before:absolute before:-top-6 before:bottom-0 before:-left-60 before:-right-6">
@@ -207,11 +216,43 @@ export default function Guess() {
       >
       </div>
 
-      <div className="flex-auto sm:px-6">
-        <p className="text-xl">Play the best move.</p>
-        <button onClick={handlePreviousButtonClick}>Previous</button>
-        <button onClick={handleNextButtonClick}>Next</button>
-      </div>
+      {
+        state.matches('results') && (
+          <div className="sm:px-6">
+            <div className="mb-6">
+              <p className="text-xl flex items-center">
+                You played Qh1.
+              </p>
+              <span className="text-teal-400 text-sm">{state.context.userEval}</span>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-xl flex items-center">
+                Text move is Qh1.
+              </p>
+              <span className="text-teal-400 text-sm">{state.context.masterEval}</span>
+            </div>
+
+            <button
+              className="px-6 h-12 uppercase font-semibold tracking-wider border-2 border-black border-b-4 border-r-4 bg-teal-400 text-black shadow-xl enabled:hover:shadow-sm enabled:hover:border-b-2 enabled:hover:border-r-2 disabled:opacity-50"
+              onClick={handleBackToGameClick}
+            >Back to game</button>
+          </div>
+        )
+      }
+
+      {(state.matches('ready') || state.matches('loading')) && (
+        <div className="flex-auto sm:px-6">
+          <p className="text-xl">Play the best move.</p>
+          <button onClick={handlePreviousButtonClick}>Previous</button>
+          <button onClick={handleNextButtonClick}>Next</button>
+          {state.matches('loading') && (
+            <div className="animate-pulse my-6 w-full sm:w-1/2">
+              <p>⏳ Loading...</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   </div>
   );
