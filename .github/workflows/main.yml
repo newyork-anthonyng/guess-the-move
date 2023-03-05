@@ -18,5 +18,9 @@ jobs:
         uses: cypress-io/github-action@v3
         with:
           working-directory: guess-the-move-frontend
+          browser: chrome
+          build: yarn build
+          start: yarn start
+          wait-on: "http://localhost:3000"
         env:
           CYPRESS_BASE_URL: ${{ github.event.deployment_status.target_url }}
