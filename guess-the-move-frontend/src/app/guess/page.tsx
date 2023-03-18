@@ -1,5 +1,6 @@
 'use client';
 
+import Script from 'next/script';
 import { useEffect, useRef } from 'react';
 import { useMachine } from '@xstate/react';
 import evaluateMachine from './machine';
@@ -19,6 +20,51 @@ import { Config } from 'chessground/config';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
+
+class Stockfish {
+  constructor(config) {
+    this.stockfish = new Worker('/stockfish.js');
+    this.depth = config.depth || 15;
+
+    this.stockfish.addEventListener('message', (e) => {
+      // console.log(e.data);
+      // config.onEvaluation(15);
+      if (e.data.startsWith(`info depth ${this.depth}`)) {
+        
+        // get eval
+        const match = e.data.match(/^info .*\bscore (\w+) (-?\d+)/)
+        const gameTurn = this.fen.match(/[\S+] (b|w)/)[1];
+        const score = parseInt(match[2]) * (gameTurn == 'w' ? 1 : -1);
+        if(match[1] == 'cp') {
+          config.onEvaluation((score / 100.0).toFixed(2));
+            // engineStatus.score = (score / 100.0).toFixed(2);
+        /// Did it find a mate?
+        } else if(match[1] == 'mate') {
+            // engineStatus.score = 'Mate in ' + Math.abs(score);
+            config.onEvaluation(`Math in ${Math.abs(score)}`);
+        }
+      }
+    });
+
+    this.stockfish.postMessage('uci');
+  }
+  
+  evaluate(fen) {
+    this.stockfish.postMessage('ucinewgame');
+    this.stockfish.postMessage(`position fen ${fen}`);
+    this.stockfish.postMessage(`go depth ${this.depth}`);
+    this.fen = fen;
+  }
+}
+
+const stockfish = new Stockfish({
+  onEvaluation: stockfishEvaluation => {
+    console.log('stockfish eval:', stockfishEvaluation);
+  }
+});
+
+const FEN = 'r3kb1r/p2nqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2KR3R b kq - 2 12';
+stockfish.evaluate(FEN);
 
 import { initialSquares } from './utils';
 
@@ -176,70 +222,79 @@ export default function Guess() {
   }
 
   return (
-    <div className="p-6 font-mono">
-    <div className="relative flex flex-wrap items-baseline pb-6 before:bg-black before:absolute before:-top-6 before:bottom-0 before:-left-60 before:-right-6">
-      <h1 className="flex-none font-semibold mb-2 relative text-2xl text-white w-full">Guess the move</h1>
-    </div>
-
-    <div className="max-w-5xl flex my-6 flex-col sm:flex-row">
-      <div
-        className="flex-none w-full sm:w-1/2 mb-10 min-f-full"
-        style={{
-          width: 500,
-          height: 500
+    <>
+      {/* <Script
+        src="/stockfish.js"
+        strategy="lazyOnload"
+        onLoad={() => {
+          console.log('stockfish.js loaded');
         }}
-        ref={chessboardDivRef}
-      >
-      </div>
-
-      {
-        state.matches('results') && (
-          <div className="sm:px-6">
-            <div className="mb-6">
-              <p className="text-xl flex items-center">
-                Your move&apos;s evaluation is:
-              </p>
-              <span className="text-teal-400 text-sm">{state.context.userEval}</span>
-            </div>
-
-            <div className="mb-6">
-              <p className="text-xl flex items-center">
-                In the game, they played {moves[state.context.currentMoveIndex + 1]?.san}.
-              </p>
-              <span className="text-teal-400 text-sm">{state.context.masterEval}</span>
-            </div>
-
-            <button
-              className="px-6 h-12 uppercase font-semibold tracking-wider border-2 border-black border-b-4 border-r-4 bg-teal-400 text-black shadow-xl enabled:hover:shadow-sm enabled:hover:border-b-2 enabled:hover:border-r-2 disabled:opacity-50"
-              onClick={handleBackToGameClick}
-            >Back to game</button>
-          </div>
-        )
-      }
-
-      {state.matches('ready') && (
-        <div className="flex-auto sm:px-6">
-          <p className="text-xl">Play the best move.</p>
+      ></Script> */}
+      <div className="p-6 font-mono">
+        <div className="relative flex flex-wrap items-baseline pb-6 before:bg-black before:absolute before:-top-6 before:bottom-0 before:-left-60 before:-right-6">
+          <h1 className="flex-none font-semibold mb-2 relative text-2xl text-white w-full">Guess the move</h1>
         </div>
-      )}
 
-      {state.matches('loading') && (
-        <div className="flex-auto sm:px-6">
-          <p className="text-xl">Play the best move.</p>
+        <div className="max-w-5xl flex my-6 flex-col sm:flex-row">
+          <div
+            className="flex-none w-full sm:w-1/2 mb-10 min-f-full"
+            style={{
+              width: 500,
+              height: 500
+            }}
+            ref={chessboardDivRef}
+          >
+          </div>
+
+          {
+            state.matches('results') && (
+              <div className="sm:px-6">
+                <div className="mb-6">
+                  <p className="text-xl flex items-center">
+                    Your move&apos;s evaluation is:
+                  </p>
+                  <span className="text-teal-400 text-sm">{state.context.userEval}</span>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-xl flex items-center">
+                    In the game, they played {moves[state.context.currentMoveIndex + 1]?.san}.
+                  </p>
+                  <span className="text-teal-400 text-sm">{state.context.masterEval}</span>
+                </div>
+
+                <button
+                  className="px-6 h-12 uppercase font-semibold tracking-wider border-2 border-black border-b-4 border-r-4 bg-teal-400 text-black shadow-xl enabled:hover:shadow-sm enabled:hover:border-b-2 enabled:hover:border-r-2 disabled:opacity-50"
+                  onClick={handleBackToGameClick}
+                >Back to game</button>
+              </div>
+            )
+          }
+
+          {state.matches('ready') && (
+            <div className="flex-auto sm:px-6">
+              <p className="text-xl">Play the best move.</p>
+            </div>
+          )}
+
           {state.matches('loading') && (
+            <div className="flex-auto sm:px-6">
+              <p className="text-xl">Play the best move.</p>
+              {state.matches('loading') && (
+                <div className="animate-pulse my-6 w-full sm:w-1/2">
+                  <p>⏳ Loading...</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {state.matches('opponentIsPlaying') && (
             <div className="animate-pulse my-6 w-full sm:w-1/2">
-              <p>⏳ Loading...</p>
+              <p>⏳ Playing opponent&apos;s move...</p>
             </div>
           )}
         </div>
-      )}
-
-      {state.matches('opponentIsPlaying') && (
-        <div className="animate-pulse my-6 w-full sm:w-1/2">
-          <p>⏳ Playing opponent&apos;s move...</p>
-        </div>
-      )}
-    </div>
-  </div>
+      </div>
+    </>
   );
 }
