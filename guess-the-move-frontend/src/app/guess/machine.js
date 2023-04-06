@@ -1,22 +1,24 @@
 import { assign, createMachine } from 'xstate';
+import Stockfish from './stockfish';
 
 function getEvaluation(context) {
   const userFen = context.userFen;
   const masterFen = context.masterFen;
 
-  // TODO: make real API call
-  console.group('getEvaluation');
-  console.log(userFen, masterFen);
-  console.groupEnd();
-
   return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({
-        ok: true,
-        masterEval: '+8.5',
-        userEval: '-3'
-      });
-    }, 500);
+    const stockfish = new Stockfish({
+      onEvaluation: stockfishEvaluation => {
+        console.log('********* stockfish eval:', stockfishEvaluation);
+        resolve({
+          ok: true,
+          masterEval: stockfishEvaluation,
+          userEval: stockfishEvaluation
+        });
+      }
+    });
+
+    console.log(masterFen);
+    stockfish.evaluate(masterFen);
   });
 }
 
@@ -40,6 +42,9 @@ const evaluateMachine = createMachine({
         MOVE: {
           target: 'loading',
           actions: assign((_context, event) => {
+            console.group('%cready.onMove', 'background-color: blue; color: white;');
+            console.log(event);
+            console.groupEnd();
             return {
               masterFen: event.masterFen,
               userFen: event.userFen,

@@ -1,7 +1,7 @@
 'use client';
 
 import Script from 'next/script';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMachine } from '@xstate/react';
 import evaluateMachine from './machine';
 
@@ -20,51 +20,6 @@ import { Config } from 'chessground/config';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
-
-class Stockfish {
-  constructor(config) {
-    this.stockfish = new Worker('/stockfish.js');
-    this.depth = config.depth || 15;
-
-    this.stockfish.addEventListener('message', (e) => {
-      // console.log(e.data);
-      // config.onEvaluation(15);
-      if (e.data.startsWith(`info depth ${this.depth}`)) {
-        
-        // get eval
-        const match = e.data.match(/^info .*\bscore (\w+) (-?\d+)/)
-        const gameTurn = this.fen.match(/[\S+] (b|w)/)[1];
-        const score = parseInt(match[2]) * (gameTurn == 'w' ? 1 : -1);
-        if(match[1] == 'cp') {
-          config.onEvaluation((score / 100.0).toFixed(2));
-            // engineStatus.score = (score / 100.0).toFixed(2);
-        /// Did it find a mate?
-        } else if(match[1] == 'mate') {
-            // engineStatus.score = 'Mate in ' + Math.abs(score);
-            config.onEvaluation(`Math in ${Math.abs(score)}`);
-        }
-      }
-    });
-
-    this.stockfish.postMessage('uci');
-  }
-  
-  evaluate(fen) {
-    this.stockfish.postMessage('ucinewgame');
-    this.stockfish.postMessage(`position fen ${fen}`);
-    this.stockfish.postMessage(`go depth ${this.depth}`);
-    this.fen = fen;
-  }
-}
-
-const stockfish = new Stockfish({
-  onEvaluation: stockfishEvaluation => {
-    console.log('stockfish eval:', stockfishEvaluation);
-  }
-});
-
-const FEN = 'r3kb1r/p2nqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2KR3R b kq - 2 12';
-stockfish.evaluate(FEN);
 
 import { initialSquares } from './utils';
 
@@ -187,6 +142,18 @@ export default function Guess() {
       }
     }
   });
+  const applesauceRef = useRef(state.context.currentMoveIndex);
+
+  const applesauce = useCallback(() => {
+    console.group('applesauce:::')
+    console.log('from state', state.context.currentMoveIndex)
+    console.log('from context', applesauceRef.current);
+    console.groupEnd();
+  }, [state.context.currentMoveIndex]);
+
+  useEffect(() => {
+    applesauceRef.current = state.context.currentMoveIndex;
+  }, [state.context.currentMoveIndex]);
 
   useEffect(() => {
     const $div = chessboardDivRef.current;
@@ -203,9 +170,12 @@ export default function Guess() {
         events: {
           move: () => {
             const playerFen = chessgroundRef.current && chessgroundRef.current.getFen() || '';
-            const nextMoveIndex = state.context.currentMoveIndex + 1;
+            // const nextMoveIndex = state.context.currentMoveIndex + 1;
+            const nextMoveIndex = applesauceRef.current + 1;
             const masterGameState = moves[nextMoveIndex];
             const masterFen = masterGameState.fen || '';
+            // applesauce();
+            // console.log(nextMoveIndex, applesauceRef.current);
             send("MOVE", {
               masterFen,
               userFen: playerFen
