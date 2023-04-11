@@ -24,6 +24,31 @@ it('should render chess board', () => {
   expect($board?.querySelectorAll('.white.pawn').length).toEqual(8);
 });
 
+function wait() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 1000);
+  })
+}
+
+it('should only allow legal moves', async () => {
+  const { container } = render(<Page />);
+
+  const $board = container.querySelector('cg-board');
+  
+  await wait();
+
+  const $ePawn = $board?.querySelectorAll('.white.pawn')[4];
+  expect($ePawn).toBeTruthy();
+  if (!$ePawn) {
+    throw Error('e pawn is undefined');
+  };
+
+  fireEvent.click($ePawn);
+  console.log($ePawn.style);
+  // const $dPawn = $board?.querySelectorAll('.white.pawn')[3];
+  // console.log($dPawn.style);
+});
+
 it.todo('should allow user to guess the current move of the game');
 
 it.todo('should allow user to see the master move');
