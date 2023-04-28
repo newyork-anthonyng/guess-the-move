@@ -59,15 +59,16 @@ def evaluate_move():
     user_move = request_data['user_move']
     # Query the DB to get a game with this ID
     game_db = Game.query.filter_by(id=game_id).first()
+    # If that game doesn't exist, send an error message 
+    if game_db == None:
+        return jsonify({"msg": 'Game Not Found'}), 400
     # If that game has already finished, send an error response
-    #if game_db.fen == 'Game Finished':
-    #    return jsonify({"msg": 'Game Finished'}), 400
+    if game_db.fen == 'Game Finished':
+        return jsonify({"msg": 'Game Finished'}), 400
     # Turn pgn to StringIO object (required by the library)
     pgn = io.StringIO(game_db.pgn)
-    print(game_db.pgn)
     # Parse the game from a pgn string and create a root node.
     game = chess.pgn.read_game(pgn)
-    print(game)
     # Create a board object
     board = game.board()
     # Set the board to the current fen position
@@ -80,7 +81,6 @@ def evaluate_move():
     # Move 1 step up the node tree (pgn) and make one move on the board 
     # (first move is done no matter what)
     node = game.next()
-    print(game)
     board.push(node.move)
     if x == 0 and game_db.color == 1:
             # If the color is black, make one more step up the node tree and make one more move on the board.
@@ -98,6 +98,7 @@ def evaluate_move():
     # Set position for the Stockfish and get evaluation of the pro.
     stockfish.set_fen_position(board.fen())
     eval_pro = stockfish.get_evaluation()
+    difference = 0
     # If player's move is different, evaluate it.
     if user_move != node.move.uci():
         # Move one node back and create a variation.
@@ -115,6 +116,12 @@ def evaluate_move():
         # Set the postion for the Stockfish with the user move and evaluate it.
         stockfish.set_fen_position(board.fen())
         eval_user = stockfish.get_evaluation()
+        # Calculate the difference between the pro move and the user move
+        difference = eval_pro['value'] - eval_user['value']
+        # If the color is black, change - to + and the other way around.
+        # So that when the difference is positive it means the pro's move is better and vice versa. 
+        if game_db.color == 1:
+            difference = - difference
     # Move 1 node back on the pgn tree and undo 1 move on the board (in case there was a variation) 
     node = node.parent
     board.pop()
@@ -124,18 +131,18 @@ def evaluate_move():
     for i in range (3):
         node = node.next()
         # If that was the last move of this side, set game_end variable to True and stop the loop
-        #if node == None:
-        #    game_end = True
-        #    break
+        if node == None:
+            game_end = True
+            break
         board.push(node.move)
         i += 1
     # Check if the game has ended
-    #if game_end:
+    if game_end:
         # If the game has ended, store "Game Finished" instead of the fen
-    #    game_db.fen = 'Game Finished'
-    #else:
+        game_db.fen = 'Game Finished'
+    else:
         # Otherwise get the fen required for the next move and add it to the DB.   
-    game_db.fen = board.fen()
+        game_db.fen = board.fen()
     db.session.commit()
     # Create evaluation dictionary, turn it to JSON and send it back.
     eval_dict = {}
@@ -143,6 +150,7 @@ def evaluate_move():
     eval_dict['eval_user'] = eval_user
     eval_dict['eval_pro'] = eval_pro
     eval_dict['game_end'] = game_end
+    eval_dict['difference'] = difference
     return jsonify(eval_dict)
 
 @app.route('/report_card', methods=['POST'])
