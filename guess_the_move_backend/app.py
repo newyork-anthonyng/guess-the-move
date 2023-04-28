@@ -59,10 +59,15 @@ def evaluate_move():
     user_move = request_data['user_move']
     # Query the DB to get a game with this ID
     game_db = Game.query.filter_by(id=game_id).first()
+    # If that game has already finished, send an error response
+    #if game_db.fen == 'Game Finished':
+    #    return jsonify({"msg": 'Game Finished'}), 400
     # Turn pgn to StringIO object (required by the library)
     pgn = io.StringIO(game_db.pgn)
+    print(game_db.pgn)
     # Parse the game from a pgn string and create a root node.
     game = chess.pgn.read_game(pgn)
+    print(game)
     # Create a board object
     board = game.board()
     # Set the board to the current fen position
@@ -75,6 +80,7 @@ def evaluate_move():
     # Move 1 step up the node tree (pgn) and make one move on the board 
     # (first move is done no matter what)
     node = game.next()
+    print(game)
     board.push(node.move)
     if x == 0 and game_db.color == 1:
             # If the color is black, make one more step up the node tree and make one more move on the board.
@@ -100,8 +106,6 @@ def evaluate_move():
         # Create a pgn string with a variation.
         exporter = chess.pgn.StringExporter(headers=True, variations=True, comments=True)
         pgn_string = game.accept(exporter)
-        # Remove all the new line charcters from the pgn string
-        pgn_string = pgn_string.replace("\n", "")
         # Update pgn in the database to include a new variation
         game_db.pgn = pgn_string
         db.session.commit()
@@ -116,12 +120,21 @@ def evaluate_move():
     board.pop()
     # Move 3 steps forward and make 3 half-moves on the board
     i = 0
+    game_end = False
     for i in range (3):
         node = node.next()
+        # If that was the last move of this side, set game_end variable to True and stop the loop
+        #if node == None:
+        #    game_end = True
+        #    break
         board.push(node.move)
         i += 1
-    # !!!!!!!!!!!!! Need to check if it's not the end of the game
-    # Get the fen required for the next move and add it to the DB.
+    # Check if the game has ended
+    #if game_end:
+        # If the game has ended, store "Game Finished" instead of the fen
+    #    game_db.fen = 'Game Finished'
+    #else:
+        # Otherwise get the fen required for the next move and add it to the DB.   
     game_db.fen = board.fen()
     db.session.commit()
     # Create evaluation dictionary, turn it to JSON and send it back.
@@ -129,10 +142,13 @@ def evaluate_move():
     eval_dict['pgn'] = game_db.pgn
     eval_dict['eval_user'] = eval_user
     eval_dict['eval_pro'] = eval_pro
+    eval_dict['game_end'] = game_end
     return jsonify(eval_dict)
 
 @app.route('/report_card', methods=['POST'])
 def report_card():
+    # Remove all the new line charcters from the pgn string
+    # pgn_string = pgn_string.replace("\n", "")
     report_dict = {}
     report_dict['ok'] = True
     report_dict['data'] = {}
