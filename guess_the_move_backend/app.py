@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from stockfish import Stockfish
-import io, chess.pgn
+import io, chess.pgn, math
 
 stockfish = Stockfish('C:/Users/vladi/Downloads/stockfish_15.1_win_x64_popcnt/stockfish-windows-2022-x86-64-modern')
 
@@ -42,8 +42,9 @@ def validate_pgn():
     if game.errors:
         error1 = game.errors[0]
         return jsonify({"msg": str(error1)}), 400
+    fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
     # Add pgn, color and starting fen to the DB 
-    game_db = Game(pgn=text_pgn, color=bool_color, fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+    game_db = Game(pgn=text_pgn, color=bool_color, fen=fen)
     db.session.add(game_db)
     db.session.commit()
     # Create a dict, add ID of the game to it and return as JSON.
@@ -98,7 +99,6 @@ def evaluate_move():
     # Set position for the Stockfish and get evaluation of the pro.
     stockfish.set_fen_position(board.fen())
     eval_pro = stockfish.get_evaluation()
-    difference = 0
     # If player's move is different, evaluate it.
     if user_move != node.move.uci():
         # Move one node back and create a variation.
@@ -116,15 +116,31 @@ def evaluate_move():
         # Set the postion for the Stockfish with the user move and evaluate it.
         stockfish.set_fen_position(board.fen())
         eval_user = stockfish.get_evaluation()
+        # Calculate winning chances after user's move.
+        win_chances = 2 / (1 + math.exp(-0.004 * eval_user['value'])) - 1
         # Calculate the difference between the pro move and the user move
         difference = eval_pro['value'] - eval_user['value']
         # If the color is black, change - to + and the other way around.
         # So that when the difference is positive it means the pro's move is better and vice versa. 
         if game_db.color == 1:
             difference = - difference
+    else:
+        # If user's move is same as pro's move, set difference to 0 and calculate win
+        # chanses after pro's move.
+        difference = 0
+        win_chances = 2 / (1 + math.exp(-0.004 * eval_pro['value'])) - 1
     # Move 1 node back on the pgn tree and undo 1 move on the board (in case there was a variation) 
     node = node.parent
     board.pop()
+    # Set Stockfish to previous position, evaluate it and calculate previous move's winning chances
+    stockfish.set_fen_position(board.fen())
+    eval_prev = stockfish.get_evaluation()
+    win_chances_prev = 2 / (1 + math.exp(-0.004 * eval_prev['value'])) - 1
+    # Blunder count is the difference between winning chances for current and previous moves.
+    blunder_count = win_chances - win_chances_prev
+    # If the color is black, change - to + and the other way around to keep it same for both players.
+    if game_db.color == 1:
+        blunder_count = - blunder_count
     # Move 3 steps forward and make 3 half-moves on the board
     i = 0
     game_end = False
@@ -151,6 +167,8 @@ def evaluate_move():
     eval_dict['eval_pro'] = eval_pro
     eval_dict['game_end'] = game_end
     eval_dict['difference'] = difference
+    eval_dict['win_chances'] = win_chances
+    eval_dict['blunder_count'] = blunder_count
     return jsonify(eval_dict)
 
 @app.route('/report_card', methods=['POST'])
