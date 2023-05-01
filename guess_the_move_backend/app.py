@@ -17,6 +17,9 @@ class Game(db.Model):
     pgn = db.Column(db.Text, nullable=False)
     color = db.Column(db.Boolean, nullable=False)
     fen = db.Column(db.String(100), nullable=False)
+    blunder = db.Column(db.Integer, default=0)
+    mistake = db.Column(db.Integer, default=0)
+    inaccuracy = db.Column(db.Integer, default=0)
 
     def __repr__(self):
         return f"User '{self.id}'"
@@ -137,11 +140,25 @@ def evaluate_move():
     eval_prev = stockfish.get_evaluation()
     win_chances_prev = 2 / (1 + math.exp(-0.004 * eval_prev['value'])) - 1
     # Blunder count is the difference between winning chances for current and previous moves.
-    blunder_count = win_chances - win_chances_prev
+    blunder_count = win_chances_prev - win_chances
     # If the color is black, change - to + and the other way around to keep it same for both players.
+    blunder = mistake = inaccuracy = False
     if game_db.color == 1:
         blunder_count = - blunder_count
-    # Move 3 steps forward and make 3 half-moves on the board
+    # Check if it's a blunder/mistake/inaccuracy, update the variable and increment the value in the DB if needed.
+    if blunder_count >= 0.3:
+        blunder = True
+        game_db.blunder += 1
+        db.session.commit()
+    elif blunder_count >= 0.2:
+        mistake = True
+        game_db.mistake += 1
+        db.session.commit()
+    elif blunder_count >= 0.1:
+        inaccuracy = True
+        game_db.inaccuracy += 1
+        db.session.commit()
+    # Move 3 steps forward and make 3 half-moves on the board to get to the next move's position
     i = 0
     game_end = False
     for i in range (3):
@@ -169,6 +186,9 @@ def evaluate_move():
     eval_dict['difference'] = difference
     eval_dict['win_chances'] = win_chances
     eval_dict['blunder_count'] = blunder_count
+    eval_dict['blunder'] = blunder 
+    eval_dict['mistake'] = mistake
+    eval_dict['inaccuracy'] = inaccuracy
     return jsonify(eval_dict)
 
 @app.route('/report_card', methods=['POST'])
