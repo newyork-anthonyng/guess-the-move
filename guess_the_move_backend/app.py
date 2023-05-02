@@ -20,6 +20,7 @@ class Game(db.Model):
     blunder = db.Column(db.Integer, default=0)
     mistake = db.Column(db.Integer, default=0)
     inaccuracy = db.Column(db.Integer, default=0)
+    difference = db.Column(db.Float, default=0)
 
     def __repr__(self):
         return f"User '{self.id}'"
@@ -132,6 +133,11 @@ def evaluate_move():
         # chanses after pro's move.
         difference = 0
         win_chances = 2 / (1 + math.exp(-0.004 * eval_pro['value'])) - 1
+    # Update the centipawn difference value in the DB. 
+    if x == 0:
+        game_db.difference = difference
+    else:
+        game_db.difference = (game_db.difference + difference) / 2
     # Move 1 node back on the pgn tree and undo 1 move on the board (in case there was a variation) 
     node = node.parent
     board.pop()
