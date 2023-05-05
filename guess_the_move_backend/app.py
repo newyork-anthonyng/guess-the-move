@@ -24,6 +24,12 @@ class Game(db.Model):
 
     def __repr__(self):
         return f"User '{self.id}'"
+    
+def calculate_win_chances(eval):
+    
+    win_chances = 2 / (1 + math.exp(-0.004 * eval)) - 1
+    return win_chances
+
 
 @app.route('/validate_pgn', methods=['POST'])
 def validate_pgn():
@@ -105,6 +111,16 @@ def evaluate_move():
     eval_pro = stockfish.get_evaluation()
     # If player's move is different, evaluate it.
     if user_move != node.move.uci():
+        # Undo the last move on the board (pro)
+        board.pop()
+        move = chess.Move.from_uci(user_move)
+        # Check if the move is in legal moves.
+        if move in board.legal_moves:
+            # Make a move with the variation (user)
+            board.push(move)
+        else:
+            # Return an error if not
+            return jsonify({"msg": 'Illegal move'}), 400
         # Move one node back and create a variation.
         node = node.parent
         node = node.add_variation(chess.Move.from_uci(user_move))
@@ -114,14 +130,11 @@ def evaluate_move():
         # Update pgn in the database to include a new variation
         game_db.pgn = pgn_string
         db.session.commit()
-        # Undo the last move on the board (pro) and make a move with the variation (user)
-        board.pop()
-        board.push(chess.Move.from_uci(user_move))
         # Set the postion for the Stockfish with the user move and evaluate it.
         stockfish.set_fen_position(board.fen())
         eval_user = stockfish.get_evaluation()
         # Calculate winning chances after user's move.
-        win_chances = 2 / (1 + math.exp(-0.004 * eval_user['value'])) - 1
+        win_chances = calculate_win_chances(eval_user['value'])
         # Calculate the difference between the pro move and the user move
         difference = eval_pro['value'] - eval_user['value']
         # If the color is black, change - to + and the other way around.
@@ -132,8 +145,8 @@ def evaluate_move():
         # If user's move is same as pro's move, set difference to 0 and calculate win
         # chanses after pro's move.
         difference = 0
-        win_chances = 2 / (1 + math.exp(-0.004 * eval_pro['value'])) - 1
-    # Update the centipawn difference value in the DB. 
+        win_chances = calculate_win_chances(eval_pro['value'])
+    # Update the centipawn difference value in the DB.
     if x == 0:
         game_db.difference = difference
     else:
@@ -144,7 +157,7 @@ def evaluate_move():
     # Set Stockfish to previous position, evaluate it and calculate previous move's winning chances
     stockfish.set_fen_position(board.fen())
     eval_prev = stockfish.get_evaluation()
-    win_chances_prev = 2 / (1 + math.exp(-0.004 * eval_prev['value'])) - 1
+    win_chances_prev = calculate_win_chances(eval_prev['value'])
     # Blunder count is the difference between winning chances for current and previous moves.
     blunder_count = win_chances_prev - win_chances
     # If the color is black, change - to + and the other way around to keep it same for both players.
@@ -186,13 +199,14 @@ def evaluate_move():
     # Create evaluation dictionary, turn it to JSON and send it back.
     eval_dict = {}
     eval_dict['pgn'] = game_db.pgn
-    eval_dict['eval_user'] = eval_user
-    eval_dict['eval_pro'] = eval_pro
+    eval_dict['eval_user'] = eval_user['value']
+    eval_dict['eval_pro'] = eval_pro['value']
     eval_dict['game_end'] = game_end
-    eval_dict['difference'] = difference
+    eval_dict['current_difference'] = difference
+    eval_dict['avg_difference'] = game_db.difference
     eval_dict['win_chances'] = win_chances
     eval_dict['blunder_count'] = blunder_count
-    eval_dict['blunder'] = blunder 
+    eval_dict['blunder'] = blunder
     eval_dict['mistake'] = mistake
     eval_dict['inaccuracy'] = inaccuracy
     return jsonify(eval_dict)
@@ -201,13 +215,20 @@ def evaluate_move():
 def report_card():
     # Remove all the new line charcters from the pgn string
     # pgn_string = pgn_string.replace("\n", "")
+     # Get the values from the request
+    request_data = request.get_json()
+    game_id = request_data['game_id']
+    # Query the DB to get a game with this ID
+    game_db = Game.query.filter_by(id=game_id).first()
+    # If that game doesn't exist, send an error message 
+    if game_db == None:
+        return jsonify({"msg": 'Game Not Found'}), 400
     report_dict = {}
-    report_dict['ok'] = True
-    report_dict['data'] = {}
-    report_dict['data']['inaccuracies'] = 3
-    report_dict['data']['mistakes'] = 4
-    report_dict['data']['blunders'] = 1
-    report_dict['data']['avgCentipawnLoss'] = 38
+    report_dict['pgn'] = game_db.pgn
+    report_dict['inaccuracies'] = game_db.inaccuracy
+    report_dict['mistakes'] = game_db.mistake
+    report_dict['blunders'] = game_db.blunder
+    report_dict['avgCentipawnDifference'] = game_db.difference
     return jsonify(report_dict)
 
 if __name__ == '__main__':
