@@ -1,30 +1,8 @@
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from stockfish import Stockfish
+from flask import request, jsonify
 import io, chess.pgn, math
+from guess_the_move_backend.models import Game
+from guess_the_move_backend import app, db, stockfish
 
-stockfish = Stockfish('C:/Users/vladi/Downloads/stockfish_15.1_win_x64_popcnt/stockfish-windows-2022-x86-64-modern')
-
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
-app.config['SECRET_KEY'] = 'secret'
-app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_TYPE'] = 'filesystem'
-db = SQLAlchemy(app)
-
-class Game(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    pgn = db.Column(db.Text, nullable=False)
-    color = db.Column(db.Boolean, nullable=False)
-    fen = db.Column(db.String(100), nullable=False)
-    blunder = db.Column(db.Integer, default=0)
-    mistake = db.Column(db.Integer, default=0)
-    inaccuracy = db.Column(db.Integer, default=0)
-    difference = db.Column(db.Float, default=0)
-
-    def __repr__(self):
-        return f"User '{self.id}'"
-    
 def calculate_win_chances(eval):
     
     win_chances = 2 / (1 + math.exp(-0.004 * eval)) - 1
@@ -230,6 +208,3 @@ def report_card():
     report_dict['blunders'] = game_db.blunder
     report_dict['avgCentipawnDifference'] = game_db.difference
     return jsonify(report_dict)
-
-if __name__ == '__main__':
-    app.run(debug=True)
