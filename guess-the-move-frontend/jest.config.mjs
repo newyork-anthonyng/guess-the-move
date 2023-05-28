@@ -6,6 +6,7 @@ const createJestConfig = nextJest({
 
 async function jestConfig() {
   const nextJestConfig = await createJestConfig({
+    setupFilesAfterEnv: ['<rootDir>/src/setupTests.js'],
     testEnvironment: 'jest-environment-jsdom',
   })()
   nextJestConfig.transformIgnorePatterns[0] = '/node_modules/(?!chess\.js)/'
