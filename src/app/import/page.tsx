@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useMachine } from '@xstate/react';
 import validateMachine from './machine';
 
+if (process.env.NODE_ENV === 'development') {
+  require('../../mocks/index')
+}
+
 const samplePgn = `1.e4 e5 2.Nf3 d6 3.d4 Bg4 4.dxe5 Bxf3 5.Qxf3 dxe5 6.Bc4 Nf6 7.Qb3 Qe7 8.Nc3 c6 9.Bg5 b5 10.Nxb5 cxb5 11.Bxb5+ Nbd7 12.O-O-O Rd8 13.Rxd7 Rxd7 14.Rd1 Qe6 15.Bxd7+ Nxd7 16.Qb8+ Nxb8 17.Rd8# 1-0`;
 
 export default function Page() {
@@ -11,8 +15,8 @@ export default function Page() {
 
   const [state, send] = useMachine(validateMachine, {
     actions: {
-      redirectPage: () => {
-        router.push('/guess')
+      redirectPage: (context) => {
+        router.push(`/guess/${context.gameId}`);
       }
     }
   });
@@ -58,11 +62,19 @@ export default function Page() {
           />
           <button
             className="px-6 h-12 uppercase font-semibold tracking-wider border-2 border-black border-b-4 border-r-4 bg-teal-400 text-black shadow-xl enabled:hover:shadow-sm enabled:hover:border-b-2 enabled:hover:border-r-2 disabled:opacity-50"
+            disabled={state.matches('submitting')}
           >Submit</button>
         </form>
 
-        {state.matches('error') && <div className="my-6 w-full sm:w-1/2">
+        {state.matches('submitting') && <div className="my-6 w-full sm:w-1/2">
+          <p className="text-green-500">Submitting...</p>
+        </div>}
+
+        {state.matches('error.isPgnInvalid') && <div className="my-6 w-full sm:w-1/2">
           <p className="text-red-500">The PGN is not valid. Please add a valid PGN.</p>
+        </div>}
+        {state.matches('error.network') && <div className="my-6 w-full sm:w-1/2">
+          <p className="text-red-500">An error occured when trying to create the game. Try again later.</p>
         </div>}
 
         <button

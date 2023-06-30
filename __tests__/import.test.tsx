@@ -1,8 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Page from '../src/app/import/page';
 import '@testing-library/jest-dom'
 import { useRouter } from "next/navigation"
-import { expect } from '@jest/globals';
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
@@ -23,7 +22,7 @@ beforeEach(() => {
   mockPush.mockClear();
 });
 
-it('should redirect user to next page if pgn is valid', () => {
+it('should redirect user to next page if pgn is valid', async () => {
   render(<Page />);
 
   const $textArea = screen.getByRole('textbox', { name: /chess pgn/i });
@@ -36,7 +35,11 @@ it('should redirect user to next page if pgn is valid', () => {
   const $error = screen.queryByText(/please add a valid pgn/i);
   expect($error).toBeNull();
 
-  expect(mockPush).toHaveBeenCalledWith('/guess');
+  await waitFor(() => {
+    expect(screen.queryByText(/submitting/i)).not.toBeInTheDocument()
+  })
+
+  expect(mockPush).toHaveBeenCalledWith('/guess/42');
 });
 
 it('should show error if pgn is not valid', () => {
@@ -82,7 +85,7 @@ it('should show error if pgn is empty', () => {
   expect(mockPush).not.toHaveBeenCalled();
 });
 
-it('should add sample chess pgn', () => {
+it('should add sample chess pgn', async () => {
   render(<Page />);
 
   const $addSamplePgnButton = screen.getByRole('button', { name: /add sample chess pgn/i });
@@ -94,5 +97,10 @@ it('should add sample chess pgn', () => {
 
   const $submitButton = screen.getByRole('button', { name: /submit/i });
   fireEvent.click($submitButton);
-  expect(mockPush).toHaveBeenCalledWith('/guess');
+
+  await waitFor(() => {
+    expect(screen.queryByText(/submitting/i)).not.toBeInTheDocument()
+  })
+
+  expect(mockPush).toHaveBeenCalledWith('/guess/42');
 });
