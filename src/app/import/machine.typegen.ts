@@ -4,10 +4,12 @@
   export interface Typegen0 {
         '@@xstate/typegen': true;
         internalEvents: {
-          "xstate.init": { type: "xstate.init" };
+          "done.invoke.createGame": { type: "done.invoke.createGame"; data: unknown; __tip: "See the XState TS docs to learn how to strongly type this." };
+"error.platform.createGame": { type: "error.platform.createGame"; data: unknown };
+"xstate.init": { type: "xstate.init" };
         };
         invokeSrcNameMap: {
-          
+          "createGame": "done.invoke.createGame";
         };
         missingImplementations: {
           actions: "redirectPage";
@@ -16,19 +18,21 @@
           services: never;
         };
         eventsCausingActions: {
-          "redirectPage": "SUBMIT_PGN";
+          "cacheGameId": "done.invoke.createGame";
+"redirectPage": "done.invoke.createGame";
 "setPgn": "CHANGE";
         };
         eventsCausingDelays: {
           
         };
         eventsCausingGuards: {
-          "isPgnValid": "SUBMIT_PGN";
+          "didCreateGame": "done.invoke.createGame";
+"isPgnValid": "SUBMIT_PGN";
         };
         eventsCausingServices: {
-          
+          "createGame": "SUBMIT_PGN";
         };
-        matchesStates: "error" | "ready" | "submitted";
+        matchesStates: "error" | "error.isPgnInvalid" | "error.network" | "ready" | "submitted" | "submitting" | { "error"?: "isPgnInvalid" | "network"; };
         tags: never;
       }
   

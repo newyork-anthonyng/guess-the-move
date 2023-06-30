@@ -1,20 +1,32 @@
 import { Chess } from 'chess.js';
 import { createMachine, assign } from 'xstate';
 
+const URL = '/game'
+function createGame(pgn: string) {
+  return fetch(URL, {
+    method: 'POST',
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ pgn })
+  }).then(a => a.json())
+}
+
 const validateMachine = createMachine({
   predictableActionArguments: true,
   tsTypes: {} as import("./machine.typegen").Typegen0,
   schema: {
-    context: {} as { pgn: string },
+    context: {} as { pgn: string; gameId: string; },
     events: {} as
       { type: 'CHANGE'; pgn: string } |
-      { type: 'SUBMIT_PGN' }
+      { type: 'SUBMIT_PGN' } |
+      { type: "done.invoke.createGame"; data: { gameId: string } }
   },
-
   id: 'import',
   initial: 'ready',
   context: {
-    pgn: ''
+    pgn: '',
+    gameId: ''
   },
   states: {
     ready: {
@@ -24,19 +36,35 @@ const validateMachine = createMachine({
         },
         SUBMIT_PGN: [
           {
-            target: 'submitted',
+            target: 'submitting',
             cond: 'isPgnValid'
           },
-          'error'
+          'error.isPgnInvalid'
         ]
       }
     },
     error: {
+      initial: 'network',
       on: {
         CHANGE: {
           target: 'ready',
           actions: ['setPgn']
         }
+      },
+      states: {
+        isPgnInvalid: {},
+        network: {}
+      }
+    },
+    submitting: {
+      invoke: {
+        id: 'createGame',
+        src: 'createGame',
+        onDone: [
+          { cond: 'didCreateGame', target: 'submitted', actions: 'cacheGameId' },
+          { target: 'error.network' }
+        ],
+        onError: 'error.network'
       }
     },
     submitted: {
@@ -51,8 +79,16 @@ const validateMachine = createMachine({
         pgn: event.pgn
       };
     }),
+    cacheGameId: assign((_, event) => {
+      return {
+        gameId: event.data.gameId
+      }
+    })
   },
   guards: {
+    didCreateGame: (_, event) => {
+      return !!event.data.gameId;
+    },
     isPgnValid: (context) => {
       const pgn = context.pgn || '';
 
@@ -68,6 +104,11 @@ const validateMachine = createMachine({
       } catch {
         return false;
       }
+    }
+  },
+  services: {
+    createGame: (context) => {
+      return createGame(context.pgn);
     }
   }
 });
