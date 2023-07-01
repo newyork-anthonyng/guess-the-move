@@ -70,5 +70,19 @@ export const handlers = [
         userEval
       })
     )
+  }),
+  rest.get('/api/results/:gameId', (req, res, ctx) => {
+    const { gameId } = req.params;
+
+    return res(
+      ctx.delay(DELAY),
+      ctx.status(200),
+      ctx.json({
+        blunders: +gameId,
+        mistakes: +gameId,
+        inaccuracies: +gameId,
+        centipawnLoss: +gameId
+      })
+    )
   })
 ]
