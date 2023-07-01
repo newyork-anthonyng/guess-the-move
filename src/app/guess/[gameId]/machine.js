@@ -1,26 +1,24 @@
 import { assign, createMachine } from 'xstate';
 
+const URL = '/api/evaluate';
 function getEvaluation(context) {
   const userFen = context.userFen;
   const masterFen = context.masterFen;
 
-  // TODO: make real API call
-  console.group('getEvaluation');
-  console.log(userFen, masterFen);
-  console.groupEnd();
-
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({
-        ok: true,
-        masterEval: '+8.5',
-        userEval: '-3'
-      });
-    }, 500);
-  });
+  return fetch(URL, {
+      method: 'POST',
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userFen,
+        masterFen
+      })
+    }).then(a => a.json())
 }
 
 const evaluateMachine = createMachine({
+  predictableActionArguments: true,
   context: {
     currentMoveIndex: 0,
     masterEval: null,
@@ -32,9 +30,7 @@ const evaluateMachine = createMachine({
   id: 'evaluate',
   initial: 'ready',
   states: {
-    opponentPlaying: {
-
-    },
+    opponentPlaying: {},
     ready: {
       on: {
         MOVE: {

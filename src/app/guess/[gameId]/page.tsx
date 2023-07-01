@@ -8,7 +8,7 @@ import { Chess, Square } from 'chess.js';
 
 import { makeUci } from 'chessops';
 import { makeFen } from 'chessops/fen';
-import { parsePgn, makePgn, startingPosition, transform } from 'chessops/pgn';
+import { parsePgn, startingPosition, transform } from 'chessops/pgn';
 import { parseSan, makeSanAndPlay } from 'chessops/san';
 import { scalachessCharPair } from 'chessops/compat';
 
@@ -21,6 +21,10 @@ import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
 
 import { initialSquares } from './utils';
+
+if (typeof process.env.NEXT_PUBLIC_USE_MSW !== 'undefined') {
+  require('../../../mocks/index')
+}
 
 const INITIAL_FEN = `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`;
 
@@ -116,7 +120,7 @@ function getMovesFromPgn(pgn: string): CustomChessConfig[]  {
 
 const moves = getMovesFromPgn(SAMPLE_PGN);
 
-export default function Guess() {
+export default function Guess({ params }: { params: { gameId: string }}) {
   const chessboardDivRef = useRef<HTMLDivElement>(null);
   const chessgroundRef = useRef<Api>();
   const [state, send] = useMachine(evaluateMachine, {
@@ -226,17 +230,17 @@ export default function Guess() {
       {state.matches('loading') && (
         <div className="flex-auto sm:px-6">
           <p className="text-xl">Play the best move.</p>
-          {state.matches('loading') && (
-            <div className="animate-pulse my-6 w-full sm:w-1/2">
-              <p>⏳ Loading...</p>
-            </div>
-          )}
+          <div className="animate-pulse my-6 w-full sm:w-1/2">
+            <p>⏳ Loading...</p>
+          </div>
         </div>
       )}
 
       {state.matches('opponentIsPlaying') && (
-        <div className="animate-pulse my-6 w-full sm:w-1/2">
-          <p>⏳ Playing opponent&apos;s move...</p>
+        <div className="flex-auto sm:px-6">
+          <div className="animate-pulse my-6 w-full sm:w-1/2">
+            <p>⏳ Playing opponent&apos;s move...</p>
+          </div>
         </div>
       )}
     </div>

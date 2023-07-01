@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
 import { createMachine, assign } from 'xstate';
 
-const URL = '/game'
+const URL = '/api/game'
 function createGame(pgn: string) {
   return fetch(URL, {
     method: 'POST',
