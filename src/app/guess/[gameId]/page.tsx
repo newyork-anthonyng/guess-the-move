@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useMachine } from '@xstate/react';
+import { useRouter } from "next/navigation";
 import evaluateMachine from './machine';
 import { Chess, Square } from 'chess.js';
 import { Chessground } from 'chessground';
@@ -41,6 +42,7 @@ function toDests(chess: Chess) {
 }
 
 export default function Guess({ params }: { params: { gameId: string }}) {
+  const router = useRouter();
   const chessboardDivRef = useRef<HTMLDivElement>(null);
   const chessgroundRef = useRef<Api>();
   const [state, send] = useMachine(evaluateMachine, {
@@ -65,6 +67,9 @@ export default function Guess({ params }: { params: { gameId: string }}) {
           };
           chessgroundRef.current.set(newConfig);
         }
+      },
+      goToResults: (context) => {
+        router.push(`/results/${context.gameId}`);
       }
     }
   });
@@ -108,6 +113,7 @@ export default function Guess({ params }: { params: { gameId: string }}) {
       <div className="relative flex flex-wrap items-baseline pb-6 before:bg-black before:absolute before:-top-6 before:bottom-0 before:-left-60 before:-right-6">
         <h1 className="flex-none font-semibold mb-2 relative text-2xl text-white w-full">Guess the move</h1>
       </div>
+      <pre>{JSON.stringify(state.value, null, 2)}</pre>
 
       <div className="max-w-5xl flex my-6 flex-col sm:flex-row">
         <div
@@ -126,6 +132,18 @@ export default function Guess({ params }: { params: { gameId: string }}) {
               <div className="mb-6">
                 <p className="text-xl flex items-center">
                   Loading game...
+                </p>
+              </div>
+            </div>
+          )
+        }
+
+        {
+          state.matches('error.gameDoesNotExist') && (
+            <div className='sm:px-6'>
+              <div className="mb-6">
+                <p className="text-xl flex items-center">
+                  Error: could not find game
                 </p>
               </div>
             </div>

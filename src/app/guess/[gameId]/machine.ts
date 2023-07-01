@@ -68,6 +68,9 @@ const evaluateMachine = createMachine({
       }
     },
     ready: {
+      always: [
+        { cond: 'isEndOfGame', target: 'gameCompleted' }
+      ],
       on: {
         MOVE: {
           target: 'loading',
@@ -114,6 +117,10 @@ const evaluateMachine = createMachine({
         gameDoesNotExist: {},
         network: {}
       }
+    },
+    gameCompleted: {
+      type: 'final',
+      entry: 'goToResults'
     }
   }
 }, {
@@ -149,6 +156,11 @@ const evaluateMachine = createMachine({
   guards: {
     didFindGame: (_, event) => {
       return !!event.data.pgn;
+    },
+    isEndOfGame: (context) => {
+      const totalMoves = context.moves.length;
+      const currentMoveIndex = context.currentMoveIndex;
+      return currentMoveIndex >= totalMoves;
     }
   },
   services: {
