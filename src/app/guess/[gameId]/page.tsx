@@ -72,8 +72,9 @@ export default function Guess({ params }: { params: { gameId: string }}) {
   useEffect(() => {
     const $div = chessboardDivRef.current;
     const chess = new Chess(INITIAL_FEN);
+    const didGameLoad = state.matches('ready');
 
-    if ($div) {
+    if ($div && didGameLoad) {
       const result = toDests(chess);
       chessgroundRef.current = Chessground($div, {
         movable: {
@@ -118,6 +119,18 @@ export default function Guess({ params }: { params: { gameId: string }}) {
           ref={chessboardDivRef}
         >
         </div>
+
+        {
+          state.matches('loadingGame') && (
+            <div className='sm:px-6'>
+              <div className="mb-6">
+                <p className="text-xl flex items-center">
+                  Loading game...
+                </p>
+              </div>
+            </div>
+          )
+        }
 
         {
           state.matches('results') && (
