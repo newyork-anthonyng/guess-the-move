@@ -1,3 +1,11 @@
+import { Config } from 'chessground/config';
+import { uciToMove } from 'chessground/util';
+import { makeUci } from 'chessops';
+import { makeFen } from 'chessops/fen';
+import { parsePgn, startingPosition, transform } from 'chessops/pgn';
+import { parseSan, makeSanAndPlay } from 'chessops/san';
+import { scalachessCharPair } from 'chessops/compat';
+
 const initialSquares = [
   "a8",
   "b8",
@@ -65,6 +73,56 @@ const initialSquares = [
   "h1"
 ]
 
+interface CustomChessConfig extends Config {
+  san: string
+}
+
+function getMovesFromPgn(pgn: string): CustomChessConfig[]  {
+  const game = parsePgn(pgn)[0];
+  const pos = startingPosition(game.headers).unwrap();
+
+  const initialFen = makeFen(pos.toSetup());
+  const initialPosition = {
+    fen: initialFen,
+    turnColor: 'white',
+    lastMove: [],
+    san: ''
+  };
+
+  game.moves = transform(game.moves, pos, (pos, node) => {
+    const move = parseSan(pos, node.san);
+
+    if (!move) {
+      return;
+    }
+
+    const moveId = scalachessCharPair(move);
+    const san = makeSanAndPlay(pos, move);
+    const fen = makeFen(pos.toSetup());
+    const turnColor = pos.turn;
+    const uci = makeUci(move);
+    const lastMove = uciToMove(uci);
+
+    return {
+      ...node,
+      comments: node.comments || ['This is a test'],
+      fen,
+      turnColor,
+      moveId,
+      san,
+      uci,
+      lastMove
+    };
+  });
+
+  const movesArray = Array.from(game.moves.mainline());
+  movesArray.unshift(initialPosition);
+  return movesArray as CustomChessConfig[];
+}
+
 export {
-  initialSquares
+  initialSquares,
+  getMovesFromPgn,
 };
+
+export type { CustomChessConfig };
