@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMachine } from '@xstate/react';
 import validateMachine from './machine';
 
-if (process.env.NODE_ENV === 'development') {
+if (typeof process.env.NEXT_PUBLIC_USE_MSW !== 'undefined') {
   require('../../mocks/index')
 }
 
