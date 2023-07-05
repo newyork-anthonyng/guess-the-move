@@ -57,7 +57,7 @@ export const handlers = [
       })
     )
   }),
-  rest.post('/api/evaluate', (req, res, ctx) => {
+  rest.post('/api/evaluate/:gameId', (req, res, ctx) => {
     const masterEval = parseInt((Math.random() * 100)) / 10;
     const userEval = parseInt((Math.random() * 100)) / 10;
 

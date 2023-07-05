@@ -2,16 +2,13 @@ import { assign, createMachine } from 'xstate';
 import { CustomChessConfig, getMovesFromPgn } from './utils';
 
 const EVALUATE_GAME_URL = '/api/evaluate';
-function getEvaluation(userFen: string, masterFen: string) {
-  return fetch(EVALUATE_GAME_URL, {
+function getEvaluation(uci: string, gameId: string) {
+  return fetch(`${EVALUATE_GAME_URL}/${gameId}`, {
       method: 'POST',
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        userFen,
-        masterFen
-      })
+      body: JSON.stringify({ uci })
     }).then(a => a.json())
 }
 
@@ -28,14 +25,12 @@ const evaluateMachine = createMachine({
       currentMoveIndex: number;
       masterEval: number;
       userEval: number;
-      masterFen: string;
-      userFen: string;
-      userPlayedMove: string;
+      uci: string;
       gameId: string;
       moves: CustomChessConfig[];
     },
     events: {} as
-      { type: 'MOVE'; masterFen: string; userFen: string; userPlayedMove: string; } |
+      { type: 'MOVE'; data: { uci: string; } } |
       { type: 'BACK' } |
       { type: 'done.invoke.loadingGame'; data: { pgn: string } } |
       { type: 'done.invoke.getEvaluation'; data: { masterEval: number; userEval: number; } }
@@ -45,9 +40,7 @@ const evaluateMachine = createMachine({
     currentMoveIndex: 0,
     masterEval: 0,
     userEval: 0,
-    masterFen: '',
-    userFen: '',
-    userPlayedMove: '',
+    uci: '',
     gameId: '',
     moves: [] as CustomChessConfig[]
   },
@@ -136,9 +129,7 @@ const evaluateMachine = createMachine({
     }),
     cacheMove: assign((_, event) => {
       return {
-        masterFen: event.masterFen,
-        userFen: event.userFen,
-        userPlayedMove: event.userPlayedMove
+        uci: event.data.uci
       };
     }),
     cacheEvaluation: assign((_, event) => {
@@ -168,7 +159,7 @@ const evaluateMachine = createMachine({
       return loadGame(context.gameId);
     },
     getEvaluation: (context) => {
-      return getEvaluation(context.userFen, context.masterFen);
+      return getEvaluation(context.uci, context.gameId);
     }
   }
 });

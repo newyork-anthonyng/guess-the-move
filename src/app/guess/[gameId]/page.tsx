@@ -88,18 +88,14 @@ export default function Guess({ params }: { params: { gameId: string }}) {
           showDests: true
         },
         events: {
-          move: () => {
-            const playerFen = chessgroundRef.current && chessgroundRef.current.getFen() || '';
-            const nextMoveIndex = state.context.currentMoveIndex + 1;
-            const masterGameState = state.context.moves[nextMoveIndex];
-            const masterFen = masterGameState.fen || '';
+          move: (orig, dest) => {
             send("MOVE", {
-              masterFen,
-              userFen: playerFen
+              data: {
+                uci: `${orig}${dest}`
+              }
             });
           }
         }
-        
       });
     }
   }, [state.context.moves]);
@@ -113,7 +109,7 @@ export default function Guess({ params }: { params: { gameId: string }}) {
       <div className="relative flex flex-wrap items-baseline pb-6 before:bg-black before:absolute before:-top-6 before:bottom-0 before:-left-60 before:-right-6">
         <h1 className="flex-none font-semibold mb-2 relative text-2xl text-white w-full">Guess the move</h1>
       </div>
-      <pre>{JSON.stringify(state.value, null, 2)}</pre>
+      {/* <pre>{JSON.stringify(state.value, null, 2)}</pre> */}
 
       <div className="max-w-5xl flex my-6 flex-col sm:flex-row">
         <div
