@@ -18,7 +18,8 @@
           services: never;
         };
         eventsCausingActions: {
-          "cacheGameId": "done.invoke.createGame";
+          "cacheColor": "CHANGE_COLOR";
+"cacheGameId": "done.invoke.createGame";
 "redirectPage": "done.invoke.createGame";
 "setPgn": "CHANGE";
         };

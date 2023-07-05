@@ -7,11 +7,12 @@ import evaluateMachine from './machine';
 import { Chess, Square } from 'chess.js';
 import { Chessground } from 'chessground';
 import { Api } from 'chessground/api';
+import { Config } from 'chessground/config';
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
 
-import { initialSquares } from './utils';
+import { Color, initialSquares } from './utils';
 
 if (typeof process.env.NEXT_PUBLIC_USE_MSW !== 'undefined') {
   require('../../../mocks/index')
@@ -77,11 +78,12 @@ export default function Guess({ params }: { params: { gameId: string }}) {
   useEffect(() => {
     const $div = chessboardDivRef.current;
     const chess = new Chess(INITIAL_FEN);
-    const didGameLoad = state.matches('ready');
+    const isSettingUpBoard = ['settingUpBoard'].some(state.matches);
 
-    if ($div && didGameLoad) {
+    if ($div && isSettingUpBoard) {
       const result = toDests(chess);
       chessgroundRef.current = Chessground($div, {
+        orientation: (state.context.color as Config["orientation"]),
         movable: {
           free: false,
           dests: result.dests,
@@ -97,8 +99,9 @@ export default function Guess({ params }: { params: { gameId: string }}) {
           }
         }
       });
+      send({ type: 'SETTING_UP_BOARD.DONE' });
     }
-  }, [state.context.moves]);
+  }, [state.context.moves, state.value]);
 
   function handleBackToGameClick() {
     send('BACK');

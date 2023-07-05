@@ -1,14 +1,15 @@
 import { Chess } from 'chess.js';
 import { createMachine, assign } from 'xstate';
+import { COLORS, Color } from '../guess/[gameId]/utils';
 
 const URL = '/api/game'
-function createGame(pgn: string) {
+function createGame(pgn: string, color: Color) {
   return fetch(URL, {
     method: 'POST',
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ pgn })
+    body: JSON.stringify({ pgn, color })
   }).then(a => a.json())
 }
 
@@ -16,9 +17,10 @@ const validateMachine = createMachine({
   predictableActionArguments: true,
   tsTypes: {} as import("./machine.typegen").Typegen0,
   schema: {
-    context: {} as { pgn: string; gameId: string; },
+    context: {} as { pgn: string; gameId: string; color: Color },
     events: {} as
       { type: 'CHANGE'; pgn: string } |
+      { type: 'CHANGE_COLOR'; data: { color: Color} } |
       { type: 'SUBMIT_PGN' } |
       { type: "done.invoke.createGame"; data: { gameId: string } }
   },
@@ -26,13 +28,18 @@ const validateMachine = createMachine({
   initial: 'ready',
   context: {
     pgn: '',
-    gameId: ''
+    gameId: '',
+    color: COLORS[0]
   },
   states: {
     ready: {
       on: {
         CHANGE: {
           actions: ['setPgn']
+        },
+        CHANGE_COLOR: {
+          target: 'ready',
+          actions: ['cacheColor']
         },
         SUBMIT_PGN: [
           {
@@ -49,6 +56,10 @@ const validateMachine = createMachine({
         CHANGE: {
           target: 'ready',
           actions: ['setPgn']
+        },
+        CHANGE_COLOR: {
+          target: 'ready',
+          actions: ['cacheColor']
         }
       },
       states: {
@@ -83,6 +94,11 @@ const validateMachine = createMachine({
       return {
         gameId: event.data.gameId
       }
+    }),
+    cacheColor: assign((_, event) => {
+      return {
+        color: event.data.color
+      }
     })
   },
   guards: {
@@ -108,7 +124,7 @@ const validateMachine = createMachine({
   },
   services: {
     createGame: (context) => {
-      return createGame(context.pgn);
+      return createGame(context.pgn, context.color);
     }
   }
 });

@@ -28,7 +28,9 @@ export const handlers = [
       ctx.status(200),
       ctx.json({
         ok: true,
-        pgn: requestedGame.pgn
+        pgn: requestedGame.pgn,
+        color: 'black'
+        // color: 'white'
       })
     )
   }),

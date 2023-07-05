@@ -13,6 +13,7 @@ export async function GET(_: any, context: { params: { gameId: string } }) {
   });
   const data = await res.json();
 
+  // TODO: figure what color the player chose
   if (data.fen) {
     return NextResponse.json({ ok: true, pgn: data.pgn })
   }

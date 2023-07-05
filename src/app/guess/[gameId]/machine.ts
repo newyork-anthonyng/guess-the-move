@@ -1,5 +1,6 @@
 import { assign, createMachine } from 'xstate';
 import { CustomChessConfig, getMovesFromPgn } from './utils';
+import { Color, COLORS } from './utils';
 
 const EVALUATE_GAME_URL = '/api/evaluate';
 function getEvaluation(uci: string, gameId: string) {
@@ -28,11 +29,13 @@ const evaluateMachine = createMachine({
       uci: string;
       gameId: string;
       moves: CustomChessConfig[];
+      color: Color;
     },
     events: {} as
       { type: 'MOVE'; data: { uci: string; } } |
       { type: 'BACK' } |
-      { type: 'done.invoke.loadingGame'; data: { pgn: string } } |
+      { type: 'SETTING_UP_BOARD.DONE' } |
+      { type: 'done.invoke.loadingGame'; data: { pgn: string; color: Color } } |
       { type: 'done.invoke.getEvaluation'; data: { masterEval: number; userEval: number; } }
   },
   tsTypes: {} as import("./machine.typegen").Typegen0,
@@ -42,7 +45,8 @@ const evaluateMachine = createMachine({
     userEval: 0,
     uci: '',
     gameId: '',
-    moves: [] as CustomChessConfig[]
+    moves: [] as CustomChessConfig[],
+    color: COLORS[0]
   },
   id: 'evaluate',
   initial: 'loadingGame',
@@ -52,13 +56,26 @@ const evaluateMachine = createMachine({
         id: 'loadingGame',
         src: 'loadGame',
         onDone: [
-          { cond: 'didFindGame', target: 'ready', actions: 'cacheGame' },
+          { cond: 'didFindGame', target: 'settingUpBoard', actions: 'cacheGame' },
           { target: 'error.gameDoesNotExist' }
         ],
         onError: {
           target: 'error.network'
         }
       }
+    },
+    settingUpBoard: {
+      on: {
+        'SETTING_UP_BOARD.DONE': {
+          target: 'initializingGame'
+        }
+      }
+    },
+    initializingGame: {
+      always: [
+        { cond: 'isPlayingAsBlack', target: 'opponentIsPlaying' },
+        { target: 'ready' }
+      ]
     },
     ready: {
       always: [
@@ -120,11 +137,13 @@ const evaluateMachine = createMachine({
   actions: {
     cacheGame: assign((_, event) => {
       const pgn = event.data.pgn;
+      const color = event.data.color;
       const moves = getMovesFromPgn(pgn);
 
       return {
         pgn,
-        moves
+        moves,
+        color
       }
     }),
     cacheMove: assign((_, event) => {
@@ -145,6 +164,9 @@ const evaluateMachine = createMachine({
     }),
   },
   guards: {
+    isPlayingAsBlack: (context) => {
+      return context.color === COLORS[1];
+    },
     didFindGame: (_, event) => {
       return !!event.data.pgn;
     },
