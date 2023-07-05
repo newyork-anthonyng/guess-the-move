@@ -71,7 +71,10 @@ const initialSquares = [
   "f1",
   "g1",
   "h1"
-]
+];
+
+const COLORS = ['white', 'black'];
+type Color = typeof COLORS[number];
 
 interface CustomChessConfig extends Config {
   san: string
@@ -123,6 +126,7 @@ function getMovesFromPgn(pgn: string): CustomChessConfig[]  {
 export {
   initialSquares,
   getMovesFromPgn,
+  COLORS
 };
 
-export type { CustomChessConfig };
+export type { CustomChessConfig, Color };

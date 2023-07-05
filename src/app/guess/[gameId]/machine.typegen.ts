@@ -36,12 +36,13 @@
         eventsCausingGuards: {
           "didFindGame": "done.invoke.loadingGame";
 "isEndOfGame": "";
+"isPlayingAsBlack": "";
         };
         eventsCausingServices: {
           "getEvaluation": "MOVE";
 "loadGame": "xstate.init";
         };
-        matchesStates: "error" | "error.gameDoesNotExist" | "error.network" | "gameCompleted" | "loading" | "loadingGame" | "opponentIsPlaying" | "ready" | "results" | { "error"?: "gameDoesNotExist" | "network"; };
+        matchesStates: "error" | "error.gameDoesNotExist" | "error.network" | "gameCompleted" | "initializingGame" | "loading" | "loadingGame" | "opponentIsPlaying" | "ready" | "results" | "settingUpBoard" | { "error"?: "gameDoesNotExist" | "network"; };
         tags: never;
       }
   

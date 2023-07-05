@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 const API_URL = `${process.env.CHESS_EVAL_BACKEND_BASE_URL}/validate_pgn`
 export async function POST(request: Request) {
   const body = await request.json();
-  const { pgn } = body;
+  const { pgn, color } = body;
 
   const res = await fetch(API_URL, {
     method: 'POST',
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       pgn,
-      color: 'white' // for now, user can only play as white
+      color
     })
   });
   const data = await res.json();
